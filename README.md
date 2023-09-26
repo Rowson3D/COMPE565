@@ -28,7 +28,7 @@ Contributions and suggestions are welcome! If you have scripts, methodologies, o
 
 ## License
 
-This repository is open-source and available under the [MIT License](LICENSE). You are free to use and modify the content for educational and personal purposes.
+This repository is open-source and available under the [GNU License](LICENSE). You are free to use and modify the content for educational and personal purposes.
 
 Thank you for visiting this repository, and we hope it helps you on your journey to understanding multimedia technologies.
 
