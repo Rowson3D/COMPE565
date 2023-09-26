@@ -1,3 +1,13 @@
+% compE565 Homework 1 
+% Sept. 23, 2023
+% Name: Jarrod Rowson 
+% ID: 826453843 
+% email: jrowson7843@sdsu.edu  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% Problem 1: Basic Image Processing
+% M-file name: hw1_processing.m
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % task 1: read and display the image using MATLAB
 dir = 'Requirements/';
 i = imread([dir 'Waterfall.jpg'], 'jpg');
