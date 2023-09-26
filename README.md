@@ -1,4 +1,4 @@
-# Multimedia Technologies - Scripts and Methodologies
+# COMPE565 Multi-media - Image Processing and Multi-media technologies
 
 Welcome to the repository for Multimedia Technologies for COMPE565 at San Diego State University - a compilation of scripts and programming methodologies aimed at enhancing your understanding of multimedia technologies.
 
