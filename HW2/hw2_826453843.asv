@@ -1,0 +1,304 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% File: HW2_modified.m
+% COMPE_565_HW2 Modified
+% Date: 03/04/2018
+% Email: <Your Email Here>
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Clear workspace and command window
+clear all;
+clc;
+
+%%%%%%%%%%%%%%%%%
+% Encoder part:
+% Q1: 2D-DCT transform
+%%%%%%%%%%%%%%%%%
+
+% Read the image to be quantized
+img = imread('waterfall.jpg', 'jpg');
+
+% Convert to YCbCr
+ycbcr = rgb2ycbcr(img);
+
+% Display original and YCbCr images
+figure(1)
+subplot(2, 2, 1), subimage(img), title("Original RGB")
+subplot(2, 2, 2), subimage(ycbcr), title("YCbCr")
+
+% Downsizing the chrominance by 4:2:0
+y_comp  = ycbcr(:,:,1);
+cb_comp = ycbcr(:,:,2);
+cr_comp = ycbcr(:,:,3);
+
+total_rows = size(ycbcr, 1);
+total_cols = size(ycbcr, 2);
+
+fprintf("Total rows before downsampling = %d\n", total_rows);
+fprintf("Total cols before downsampling = %d\n", total_cols);
+
+% Create copies of chrominance components
+cb_copy = cb_comp;
+cr_copy = cr_comp;
+
+% Set every second chrominance component to zero
+for row = 2:2:total_rows
+    for col = 2:2:total_cols
+        cb_copy(row, col) = 0;
+        cr_copy(row, col) = 0;
+    end
+end
+
+% Remove unwanted values from the chrominance components
+cb_420 = cb_copy(1:2:end, 1:2:end);
+cr_420 = cr_copy(1:2:end, 1:2:end);
+
+% Display chrominance components before and after downsampling
+figure(2)
+subplot(2, 2, 1), subimage(cb_comp), title("Original cb")
+subplot(2, 2, 2), subimage(cr_comp), title("Original cr")
+subplot(2, 2, 3), subimage(cb_420), title("Cb 4:2:0")
+subplot(2, 2, 4), subimage(cr_420), title("Cr 4:2:0")
+
+% Get dimensions of the 4:2:0 chrominance components
+row_cb_420 = size(cb_420, 1);
+col_cb_420 = size(cb_420, 2);
+row_cr_420 = size(cr_420, 1);
+col_cr_420 = size(cr_420, 2);
+
+fprintf("Total rows in 4:2:0 cb comp. = %d\nTotal cols in 4:2:0 cb comp. = %d\n", row_cb_420, col_cb_420);
+fprintf("Total rows in 4:2:0 cr comp. = %d\nTotal cols in 4:2:0 cr comp. = %d\n", row_cr_420, col_cr_420);
+
+% Take out the 1st 8x8 block from the luminance component
+y_cpy = y_comp;
+
+% Block processing with 2D DCT transform
+dct_handle = @dct2;
+
+% Apply 8x8 block processing on y_cpy
+y_dct = blkproc(y_cpy, [8 8], dct_handle);
+
+% Compute the DC coefficients for the cb and cr components
+cb_cpy = cb_420;
+cr_cpy = cr_420;
+
+cb_dct = blkproc(cb_cpy, [8 8], dct_handle);
+cr_dct = blkproc(cr_cpy, [8 8], dct_handle);
+
+% Display DCT coefficients of luminance and chrominance components
+figure(3)
+subplot(2, 2, 1), subimage(y_dct), title("2D dct y comp")
+subplot(2, 2, 2), subimage(cb_dct), title("2D dct cb comp")
+subplot(2, 2, 3), subimage(cr_dct), title("2D dct cr comp")
+
+% Take out the 1st 2 blocks from the 6th row of DCT
+y_dct_block1 = y_dct(41:48, 1:8);
+y_dct_block2 = y_dct(41:48, 9:16);
+
+% Display DCT coefficients of selected blocks
+fprintf("\nThe 2D-DCT coefficients of 1st block:\n")
+disp(y_dct_block1)
+fprintf("\nThe 2D-DCT coefficients of 2nd block:\n")
+disp(y_dct_block2)
+
+figure(4)
+subplot(2, 2, 1), subimage(y_dct_block1), title("8x8 y comp block1")
+subplot(2, 2, 2), subimage(y_dct_block2), title("8x8 y comp block2")
+
+% Truncate the 8x8 blocks for correct representation using imshow()
+t_blk1 = truncate(y_dct_block1);
+fprintf("Truncated 8x8 blk1:\n");
+disp(t_blk1);
+t_blk2 = truncate(y_dct_block2);
+fprintf("Truncated 8x8 blk2:\n");
+disp(t_blk2);
+
+% Display the truncated blocks
+figure(5)
+subplot(2, 2, 1), imshow(t_blk1), title("Truncated 8x8 block1")
+subplot(2, 2, 2), imshow(y_dct_block1), title("Org 8x8 block1")
+subplot(2, 2, 3), imshow(t_blk2), title("Truncated 8x8 block2")
+subplot(2, 2, 4), imshow(y_dct_block2), title("Org 8x8 block2")
+
+%%%%%%%%%%%%%%
+% Q2: Quantization
+% Quantize the luminance and chrominance matrices with the quantization matrices
+%%%%%%%%%%%%%%
+
+% Quantization matrix for luminance from lecture
+lum_q_matrix = [16 11 10 16 24 40 51 61;
+                12 12 14 19 26 58 60 55;
+                14 13 16 24 40 57 69 56;
+                14 17 22 29 51 87 89 62;
+                18 22 37 56 68 109 103 77;
+                24 35 55 64 81 104 113 92;
+                49 64 78 87 108 121 120 101;
+                72 92 95 98 112 100 103 99];
+
+% Quantization matrix for chrominance from lecture
+chr_q_matrix = [17 18 24 47 99 99 99 99;
+                18 21 26 66 99 99 99 99;
+                24 26 56 99 99 99 99 99;
+                47 66 99 99 99 99 99 99;
+                99 99 99 99 99 99 99 99;
+                99 99 99 99 99 99 99 99;
+                99 99 99 99 99 99 99 99;
+                99 99 99 99 99 99 99 99];
+
+% Create copies of DCT matrices
+y_dct_cpy  = y_dct;
+cb_dct_cpy = cb_dct;
+cr_dct_cpy = cr_dct;
+
+% Quantize luminance DCT coefficients
+q_lum = @(y_dct_cpy) round(y_dct_cpy ./ lum_q_matrix);
+y_dct_q = blkproc(y_dct_cpy, [8 8], q_lum);
+
+% Quantize chrominance DCT coefficients
+q_chr1 = @(cb_dct_cpy) round(cb_dct_cpy ./ chr_q_matrix);
+q_chr2 = @(cr_dct_cpy) round(cr_dct_cpy ./ chr_q_matrix);
+cb_q_dct = blkproc(cb_dct_cpy, [8 8], q_chr1);
+cr_q_dct = blkproc(cr_dct_cpy, [8 8], q_chr2);
+
+% Report the data for the first 2 blocks in the 6th row from the top
+q_y_blk1  = y_dct_q(41:48, 1:8);
+q_y_blk2  = y_dct_q(41:48, 9:16);
+q_cb_blk1 = cb_q_dct(41:48, 1:8);
+q_cb_blk2 = cb_q_dct(41:48, 9:16);
+q_cr_blk1 = cr_q_dct(41:48, 1:8);
+q_cr_blk2 = cr_q_dct(41:48, 9:16);
+
+% Display quantized y, cb, and cr blocks
+figure(6)
+subplot(3, 2, 1), subimage(q_y_blk1), title("Quantized 1st 8x8 block of y comp.")
+subplot(3, 2, 2), subimage(q_y_blk2), title("Quantized 2nd 8x8 block of y comp.")
+subplot(3, 2, 3), subimage(q_cb_blk1), title("Quantized 1st 8x8 block of cb comp.")
+subplot(3, 2, 4), subimage(q_cb_blk2), title("Quantized 2nd 8x8 block of cb comp.")
+subplot(3, 2, 5), subimage(q_cr_blk1), title("Quantized 1st 8x8 block of cb comp.")
+subplot(3, 2, 6), subimage(q_cr_blk2), title("Quantized 2nd 8x8 block of cb comp.")
+
+% Print the DC coefficient of the luminance block
+fprintf("The DC coefficient for 1st 8x8 block of Y comp: %d\n", q_y_blk1(1,1));
+fprintf("The DC coefficient for 2nd 8x8 block of Y comp: %d\n", q_y_blk2(1,1));
+
+%%%%%%%%%%%%
+% Q3: Inverse Quantization
+% Inverse quantize the quantized image
+%%%%%%%%%%%%
+
+% In inverse quantization, multiply the quantization matrices by the quantized DCT matrices
+
+% Multiply the quantized lum matrix with the quantization matrix for inverse DCT
+y_q_cpy  = y_dct_q;
+cb_q_cpy = cb_q_dct;
+cr_q_cpy = cr_q_dct;
+
+iq_lum = @(y_q_cpy) round(y_q_cpy .* lum_q_matrix);
+iq_y = blkproc(y_dct_q, [8 8], iq_lum);
+
+% Multiply the quantized cb and cr matrices with the quantization matrix
+iq_chr1 = @(cb_q_cpy) round(cb_q_cpy .* chr_q_matrix);
+iq_chr2 = @(cr_q_cpy) round(cr_q_cpy .* chr_q_matrix);
+
+iq_cb = blkproc(cb_q_dct, [8 8], iq_chr1);
+iq_cr = blkproc(cr_q_dct, [8 8], iq_chr2);
+
+% Display the inverse quantized y, cb, and cr images
+figure(7)
+subplot(3, 1, 1), subimage(iq_y), title("Inverse quantized image of y comp")
+subplot(3, 1, 2), subimage(iq_cb), title("Inverse quantized image of cb comp")
+subplot(3, 1, 3), subimage(iq_cr), title("Inverse quantized image of cr comp")
+
+%%%%%%%%%%%%
+% Q4: Reconstruct, PSNR, error image of y component
+%%%%%%%%%%%%
+
+% Apply inverse DCT to y, cb, and cr components
+idct_handle = @(block_struct) idct2(block_struct.data);
+
+y_idct  = blockproc(iq_y, [8 8], idct_handle);
+cb_idct = blockproc(iq_cb, [8 8], idct_handle);
+cr_idct = blockproc(iq_cr, [8 8], idct_handle);
+
+% Convert the components to uint8 format
+y_idct  = uint8(y_idct);
+cb_idct = uint8(cb_idct);
+cr_idct = uint8(cr_idct);
+
+% Display the inverse DCT y, cb, and cr components
+figure(8)
+subplot(3, 1, 1), subimage(y_idct), title("Inverse DCT image of y comp")
+subplot(3, 1, 2), subimage(cb_idct), title("Inverse DCT image of cb comp")
+subplot(3, 1, 3), subimage(cr_idct), title("Inverse DCT image of cr comp")
+
+% Reconstruct the RGB image
+t_r = size(ycbcr, 1);
+t_c = size(ycbcr, 2);
+rep_ycbcr = zeros(t_r, t_c, 3);
+y_idct_cpy = y_idct;
+cb_idct_cpy = cb_idct;
+cr_idct_cpy = cr_idct;
+
+rep_ycbcr(1:2:t_r, 1:2:t_c, 2) = cb_idct_cpy(:, :);
+rep_ycbcr(1:2:t_r, 1:2:t_c, 3) = cr_idct_cpy(:, :);
+
+% Temporary variables to hold upsampled cb and cr values
+temp_cb = rep_ycbcr(:, :, 2);
+temp_cr = rep_ycbcr(:, :, 3);
+
+% Perform linear interpolation on cb and cr components for upsampling
+if mod(t_r, 2) == 0
+    for r = 2:2:t_r - 2
+        for c = 1:2:t_c
+            temp_cb(r, c) = round((temp_cb(r-1, c) + temp_cb(r+1, c)) / 2);
+            temp_cr(r, c) = round((temp_cr(r-1, c) + temp_cr(r+1, c)) / 2);
+        end
+    end
+end
+
+if mod(t_c, 2) == 0
+    for r = 1:2:t_r
+        for c = 2:2:t_c - 2
+            temp_cb(r, c) = round((temp_cb(r, c-1) + temp_cb(r, c+1)) / 2);
+            temp_cr(r, c) = round((temp_cr(r, c-1) + temp_cr(r, c+1)) / 2);
+        end
+    end
+end
+
+% Assign the interpolated values to the corresponding positions
+rep_ycbcr(:, :, 2) = temp_cb(:, :);
+rep_ycbcr(:, :, 3) = temp_cr(:, :);
+
+% Place the luminance component in its position
+rep_ycbcr(1:2:t_r, 1:2:t_c, 1) = y_idct_cpy;
+
+% Convert the YCbCr image back to RGB
+rep_rgb = ycbcr2rgb(uint8(rep_ycbcr));
+
+% Display the reconstructed RGB image
+figure(9)
+imshow(rep_rgb)
+title("Reconstructed RGB Image")
+
+% Calculate PSNR between the original and reconstructed luminance components
+psnr_val = psnr(y_comp, y_idct_cpy);
+
+fprintf("PSNR between original and reconstructed luminance components: %.2f dB\n", psnr_val);
+
+% Calculate the error image
+error_image = y_comp - y_idct_cpy;
+
+% Display the error image
+figure(10)
+imshow(error_image, [])
+title("Error Image")
+
+%%%%%%%%%%%%%%%%%
+% Helper functions
+%%%%%%%%%%%%%%%%%
+
+% Truncate 8x8 block for display using imshow
+function truncated_block = truncate(block)
+    max_val = max(max(block));
+    min_val = min(min(block));
+    truncated_block = (block - min_val) / (max_val - min_val);
+end
